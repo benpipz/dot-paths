@@ -3,7 +3,7 @@ import { Game } from '../src/game';
 import type { Level } from '../src/levels';
 
 // 3x3 grid:  0 1 2 / 3 4 5 / 6 7 8
-const level: Level = { pack: 0, index: 0, w: 3, h: 3, solution: [[0, 1, 2], [3, 4, 5, 8, 7, 6]] };
+const level: Level = { number: 0, w: 3, h: 3, solution: [[0, 1, 2], [3, 4, 5, 8, 7, 6]] };
 
 function draw(game: Game, cells: number[]) {
   const k = game.begin(cells[0])!;

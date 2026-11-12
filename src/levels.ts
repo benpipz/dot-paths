@@ -1,8 +1,7 @@
 import data from './levels.json';
 
 export interface Level {
-  pack: number;
-  index: number;
+  number: number;
   w: number;
   h: number;
   solution: number[][];
@@ -20,17 +19,13 @@ export function decodeLevel(w: number, code: string): number[][] {
 }
 
 export const packs: { w: number; h: number; levels: string[] }[] = data.packs;
-export const PACK_COUNT = packs.length;
 
-export function packSize(pack: number): number {
-  return packs[pack].levels.length;
-}
+const all = packs.flatMap((p) => p.levels.map((code) => ({ w: p.w, h: p.h, code })));
 
-export function getLevel(pack: number, index: number): Level {
-  const { w, h, levels } = packs[pack];
-  return { pack, index, w, h, solution: decodeLevel(w, levels[index]) };
-}
+export const LEVEL_COUNT = all.length;
 
-export function totalLevels(): number {
-  return packs.reduce((n, p) => n + p.levels.length, 0);
+/** Levels run one after another across all packs, starting at 0. */
+export function getLevel(number: number): Level {
+  const { w, h, code } = all[number];
+  return { number, w, h, solution: decodeLevel(w, code) };
 }

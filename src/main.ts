@@ -3,15 +3,10 @@ import { Board, COLORS } from './board';
 import { confetti, levelDone, pathDone } from './fx';
 import { Game } from './game';
 import { t } from './i18n';
-import { getLevel, PACK_COUNT, packs, packSize, totalLevels } from './levels';
+import { getLevel, LEVEL_COUNT } from './levels';
 import { store } from './storage';
 
-type Screen =
-  | { name: 'home' }
-  | { name: 'pack'; pack: number }
-  | { name: 'game'; pack: number; index: number }
-  | { name: 'settings' }
-  | { name: 'finished' };
+type Screen = { name: 'home' } | { name: 'game' } | { name: 'settings' } | { name: 'finished' };
 
 const app = document.getElementById('app')!;
 let onResize: (() => void) | null = null;
@@ -49,57 +44,28 @@ function render(screen: Screen): void {
   onResize = null;
   app.replaceChildren();
   if (screen.name === 'home') home();
-  else if (screen.name === 'pack') packScreen(screen.pack);
-  else if (screen.name === 'game') gameScreen(screen.pack, screen.index);
+  else if (screen.name === 'game') play();
   else if (screen.name === 'settings') settings();
   else finished();
 }
 
 function home(): void {
   app.append(topBar(t('title'), null, button('⚙', 'icon', () => go({ name: 'settings' }))));
-  const main = el('main', 'scroll');
+  const main = el('main', 'scroll center');
   main.append(el('p', 'howto', t('howTo')));
-  for (let p = 0; p < PACK_COUNT; p++) {
-    const { w, h } = packs[p];
-    const b = button('', 'pack', () => go({ name: 'pack', pack: p }));
-    b.style.setProperty('--accent', COLORS[p % COLORS.length]);
-    b.append(el('span', 'pack-name', `${t('pack')} ${p + 1}`));
-    b.append(el('span', 'pack-size', `${w}×${h}`));
-    b.append(el('span', 'pack-count', `${store.doneInPack(p)} / ${packSize(p)}`));
-    main.append(b);
-  }
+  main.append(el('p', 'progress', `${t('level')} ${Math.min(store.finished, LEVEL_COUNT - 1) + 1}`));
+  main.append(button(t('play'), 'primary play', () => go({ name: 'game' })));
   app.append(main);
 }
 
-function packScreen(pack: number): void {
-  app.append(topBar(`${t('pack')} ${pack + 1}`, () => go({ name: 'home' })));
-  const main = el('main', 'scroll');
-  const grid = el('div', 'tiles');
-  for (let i = 0; i < packSize(pack); i++) {
-    const done = store.isDone(pack, i);
-    const open = store.isOpen(pack, i);
-    const tile = button(String(i + 1), `tile${done ? ' done' : ''}${open ? '' : ' locked'}`, () =>
-      go({ name: 'game', pack, index: i }),
-    );
-    tile.disabled = !open;
-    grid.append(tile);
+function play(): void {
+  if (store.finished >= LEVEL_COUNT) {
+    finished();
+    return;
   }
-  main.append(grid);
-  app.append(main);
-}
-
-function nextLevel(pack: number, index: number): Screen {
-  if (index + 1 < packSize(pack)) return { name: 'game', pack, index: index + 1 };
-  for (let p = 1; p <= PACK_COUNT; p++) {
-    const q = (pack + p) % PACK_COUNT;
-    for (let i = 0; i < packSize(q); i++) if (!store.isDone(q, i)) return { name: 'game', pack: q, index: i };
-  }
-  return { name: 'home' };
-}
-
-function gameScreen(pack: number, index: number): void {
-  const game = new Game(getLevel(pack, index));
-  app.append(topBar(`${t('pack')} ${pack + 1} · ${t('level')} ${index + 1}`, () => go({ name: 'pack', pack })));
+  const number = store.finished;
+  const game = new Game(getLevel(number));
+  app.append(topBar(`${t('level')} ${number + 1}`, () => go({ name: 'home' })));
 
   const stage = el('main', 'stage');
   const canvas = el('canvas', 'board');
@@ -132,19 +98,17 @@ function gameScreen(pack: number, index: number): void {
   const solved = () => {
     board.lock();
     controls.querySelectorAll('button').forEach((b) => (b.disabled = true));
-    const before = store.doneCount();
-    store.markDone(pack, index);
+    store.markDone(number);
     levelDone();
     confetti(COLORS.slice(0, game.colors));
-    if (store.doneCount() === totalLevels() && before < totalLevels()) {
-      setTimeout(() => go({ name: 'finished' }), 1200);
+    if (store.finished >= LEVEL_COUNT) {
+      setTimeout(() => go({ name: 'finished' }, false), 1200);
       return;
     }
     const overlay = el('div', 'overlay');
     const card = el('div', 'card');
     card.append(el('h2', '', t('solved')));
-    card.append(button(t('next'), 'primary', () => go(nextLevel(pack, index))));
-    card.append(button(t('menu'), 'secondary', () => go({ name: 'pack', pack })));
+    card.append(button(t('next'), 'primary', () => go({ name: 'game' }, false)));
     overlay.append(card);
     setTimeout(() => app.append(overlay), 500);
   };
@@ -184,12 +148,15 @@ function settings(): void {
 }
 
 function finished(): void {
-  app.append(topBar(t('title'), null));
+  app.append(topBar(t('title'), () => go({ name: 'home' })));
   const main = el('main', 'scroll center');
   main.append(el('div', 'trophy', '🏆'));
   main.append(el('h2', '', t('finishedTitle')));
   main.append(el('p', 'howto', t('finishedText')));
-  main.append(button(t('menu'), 'primary', () => go({ name: 'home' })));
+  main.append(button(t('startOver'), 'primary', () => {
+    store.startOver();
+    go({ name: 'game' }, false);
+  }));
   app.append(main);
   confetti(COLORS);
 }

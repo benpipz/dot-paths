@@ -1,21 +1,25 @@
 export type Lang = 'en' | 'ru';
 
 interface Saved {
-  done: Record<string, true>;
+  finished: number;
   lang: Lang;
   muted: boolean;
 }
 
 const KEY = 'dot-paths';
+const DEFAULTS: Saved = { finished: 0, lang: 'en', muted: false };
 
 function load(): Saved {
   try {
     const raw = localStorage.getItem(KEY);
-    if (raw) return { done: {}, lang: 'en', muted: false, ...JSON.parse(raw) };
+    if (raw) {
+      const { finished, lang, muted } = { ...DEFAULTS, ...JSON.parse(raw) };
+      return { finished: typeof finished === 'number' ? finished : 0, lang, muted };
+    }
   } catch {
     /* storage unavailable */
   }
-  return { done: {}, lang: 'en', muted: false };
+  return { ...DEFAULTS };
 }
 
 const state = load();
@@ -28,18 +32,20 @@ function save(): void {
   }
 }
 
-const id = (pack: number, index: number) => `${pack}-${index}`;
-
 export const store = {
-  isDone: (pack: number, index: number) => !!state.done[id(pack, index)],
-  markDone(pack: number, index: number) {
-    state.done[id(pack, index)] = true;
-    save();
+  /** How many levels are done; also the number of the next level to play. */
+  get finished() {
+    return state.finished;
   },
-  isOpen: (pack: number, index: number) => index === 0 || !!state.done[id(pack, index - 1)] || !!state.done[id(pack, index)],
-  doneCount: () => Object.keys(state.done).length,
-  doneInPack(pack: number): number {
-    return Object.keys(state.done).filter((k) => k.startsWith(`${pack}-`)).length;
+  markDone(level: number) {
+    if (level === state.finished) {
+      state.finished++;
+      save();
+    }
+  },
+  startOver() {
+    state.finished = 0;
+    save();
   },
   get lang() {
     return state.lang;
