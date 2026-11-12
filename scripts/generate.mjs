@@ -1,4 +1,4 @@
-import { writeFileSync } from 'node:fs';
+import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { countSolutions, neighbors } from './solver.mjs';
 
 // Each pack: grid size and the range of colors. Fewer colors on the same grid means longer, harder paths.
@@ -13,6 +13,9 @@ const PACKS = [
   { w: 9, h: 9, k: [7, 8] },
   { w: 10, h: 10, k: [9, 10] },
   { w: 10, h: 10, k: [8, 9] },
+  ...Array(5).fill({ w: 10, h: 10, k: [7, 9] }),
+  ...Array(5).fill({ w: 11, h: 11, k: [8, 10] }),
+  ...Array(10).fill({ w: 12, h: 12, k: [8, 10] }),
 ];
 const PER_PACK = Number(process.env.PER_PACK ?? 100);
 const ONLY = process.env.PACK === undefined ? null : Number(process.env.PACK);
@@ -147,11 +150,13 @@ function makeLevel({ w, h, k: [kMin, kMax] }, rand, seen) {
   }
 }
 
-const out = { packs: [] };
-const seen = new Set();
+const file = process.env.OUT ?? new URL('../src/levels.json', import.meta.url);
+// Levels already shipped are kept as they are, so players' progress keeps pointing at the same puzzles.
+const out = !process.env.OUT && existsSync(file) ? JSON.parse(readFileSync(file, 'utf8')) : { packs: [] };
+const seen = new Set(out.packs.flatMap((p) => p.levels));
 const stats = [0, 0, 0];
 PACKS.forEach((pack, p) => {
-  if (ONLY !== null && ONLY !== p) return;
+  if (p < out.packs.length || (ONLY !== null && ONLY !== p)) return;
   const rand = rng(1000 + p);
   const t0 = Date.now();
   stats.fill(0);
@@ -167,5 +172,4 @@ PACKS.forEach((pack, p) => {
   console.log(`pack ${p + 1}: ${pack.w}x${pack.h}, ${levels.length} levels, ${tries} tries, solutions 0/1/2+: ${stats.join("/")}, ${((Date.now() - t0) / 1000).toFixed(1)}s`);
 });
 
-const file = process.env.OUT ?? new URL('../src/levels.json', import.meta.url);
 writeFileSync(file, JSON.stringify(out));

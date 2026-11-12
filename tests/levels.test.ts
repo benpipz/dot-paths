@@ -3,9 +3,10 @@ import { countSolutions, neighbors } from '../scripts/solver.mjs';
 import { decodeLevel, packs } from '../src/levels';
 
 describe('levels', () => {
-  it('has 10 packs of 100', () => {
-    expect(packs).toHaveLength(10);
+  it('has 3000 levels, ending with 500 at 10x10, 500 at 11x11 and 1000 at 12x12', () => {
+    expect(packs).toHaveLength(30);
     for (const p of packs) expect(p.levels).toHaveLength(100);
+    expect(packs.slice(10).map((p) => p.w)).toEqual([...Array(5).fill(10), ...Array(5).fill(11), ...Array(10).fill(12)]);
   });
 
   it('every level is unique', () => {
